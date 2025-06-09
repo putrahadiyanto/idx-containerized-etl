@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # Extract Service - Step 1
+  extract-service:
+    build:
+      context: ./extract
+      dockerfile: Dockerfile
+    volumes:
+      - etl-data-volume:/data
+    environment:
+      - PYTHONUNBUFFERED=1
+      - CHROMEDRIVER_EXECUTABLE_PATH=/usr/local/bin/chromedriver
+    restart: "no"
+    depends_on: []
+
+  # Transform Service - Step 2
+  transform-service:
+    build:
+      context: ./transform
+      dockerfile: Dockerfile
+    volumes:
+      - etl-data-volume:/data
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYSPARK_PYTHON=python3
+      - PYSPARK_DRIVER_PYTHON=python3
+    restart: "no"
+    depends_on:
+      - extract-service
+
+  # Load Service - Step 3
+  load-service:
+    build:
+      context: ./load
+      dockerfile: Dockerfile
+    volumes:
+      - etl-data-volume:/data
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYSPARK_PYTHON=python3
+      - PYSPARK_DRIVER_PYTHON=python3
+    restart: "no"
+    depends_on:
+      - transform-service
+
+volumes:
+  etl-data-volume:
+    name: etl-data-volume
