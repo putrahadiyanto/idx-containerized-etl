@@ -1,49 +1,57 @@
 version: '3.8'
 
 services:
-  # Extract Service - Step 1
+  # Extract Service - Step 1: Scrape financial data and store in MongoDB
   extract-service:
     build:
       context: ./extract
       dockerfile: Dockerfile
-    volumes:
-      - etl-data-volume:/data
     environment:
       - PYTHONUNBUFFERED=1
       - CHROMEDRIVER_EXECUTABLE_PATH=/usr/local/bin/chromedriver
-    restart: "no"
-    depends_on: []
-  # Transform Service - Step 2
+    restart: "no"  # Run once and exit
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Transform Service - Step 2: Read from MongoDB, transform data, and output JSON
   transform-service:
     build:
       context: ./transform
       dockerfile: Dockerfile
     command: python transform.py
     volumes:
-      - etl-data-volume:/data
+      - shared-data:/data
     environment:
+      # Spark and Java environment variables
       - PYTHONUNBUFFERED=1
+      - SPARK_CLASSPATH=/opt/spark/jars/mongo-spark-connector_2.12-3.0.1.jar
+      - PYSPARK_SUBMIT_ARGS=--jars /opt/spark/jars/mongo-spark-connector_2.12-3.0.1.jar pyspark-shell
+      - JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+      - SPARK_HOME=/opt/spark
+      - PYTHONPATH=/opt/spark/python:/opt/spark/python/lib/py4j-0.10.9.5-src.zip
       - PYSPARK_PYTHON=python3
       - PYSPARK_DRIVER_PYTHON=python3
-    restart: "no"
+    restart: "no"  # Run once and exit
     depends_on:
       - extract-service
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
-  # Load Service - Step 3
+  # Load Service - Step 3: Read JSON files and perform MongoDB upserts
   load-service:
     build:
       context: ./load
       dockerfile: Dockerfile
     volumes:
-      - etl-data-volume:/data
+      - shared-data:/data
     environment:
       - PYTHONUNBUFFERED=1
-      - PYSPARK_PYTHON=python3
-      - PYSPARK_DRIVER_PYTHON=python3
-    restart: "no"
+    restart: "no"  # Run once and exit
     depends_on:
       - transform-service
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
-  etl-data-volume:
-    name: etl-data-volume
+  shared-data:
+    name: etl-shared-data
