@@ -7,14 +7,53 @@ by reading from parquet and writing the transformed data back to parquet.
 
 import logging
 import os
+from datetime import datetime
 from pyspark.sql import SparkSession, functions as F
 
+def get_current_quarter():
+    """
+    Determine the current quarter based on the current month
+    
+    Returns:
+        tuple: (year, quarter) tuple where year is a string and quarter is an integer
+    """
+    CURRENT_YEAR_STR = str(datetime.now().year)
+    CURRENT_MONTH = datetime.now().month
+    QUARTER = 0
+
+    if CURRENT_MONTH <= 3:
+        QUARTER = 4
+        CURRENT_YEAR_STR = str(int(CURRENT_YEAR_STR) - 1)
+    elif CURRENT_MONTH <= 6:
+        QUARTER = 1
+    elif CURRENT_MONTH <= 9:
+        QUARTER = 2
+    else:
+        QUARTER = 3
+        
+    return (CURRENT_YEAR_STR, QUARTER)
+
 def create_spark_session():
-    """Create and configure Spark session."""
+    """Create and configure Spark session with MongoDB connector."""
+    # Get current quarter for MongoDB collection names
+    CURRENT_YEAR_STR, QUARTER = get_current_quarter()
+    
+    # MongoDB input collection name
+    input_collection = f"idx_lapkeu{CURRENT_YEAR_STR}TW{QUARTER}"
+    
     spark = SparkSession.builder \
         .appName("IDX Financial Data Transform") \
-        .config("spark.driver.extraClassPath", "/opt/spark/jars/mongo-spark-connector_2.12-3.0.1.jar") \
-        .config("spark.jars", "/opt/spark/jars/mongo-spark-connector_2.12-3.0.1.jar") \
+        .config("spark.driver.memory", "512m") \
+        .config("spark.executor.memory", "512m") \
+        .config("spark.sql.adaptive.enabled", "true") \
+        .config("spark.sql.adaptive.coalescePartitions.enabled", "true") \
+        .config("spark.driver.maxResultSize", "256m") \
+        .config("spark.driver.cores", "1") \
+        .config("spark.executor.cores", "1") \
+        .config("spark.default.parallelism", "2") \
+        .config("spark.sql.shuffle.partitions", "2") \
+        .config("spark.mongodb.input.uri", f"mongodb://host.docker.internal:27017/idx_lapkeu.{input_collection}") \
+        .master("local[1]") \
         .getOrCreate()
     return spark
 
@@ -34,7 +73,7 @@ def calculate_sum_if_exists(*columns):
 
 def transform_data():
     """
-    Transform financial data using PySpark.
+    Transform financial data using PySpark by reading from MongoDB.
     """
     logging.basicConfig(level=logging.INFO)
     logging.info("Starting transformation process...")
@@ -43,15 +82,15 @@ def transform_data():
     try:
         spark = create_spark_session()
         
-        logging.info("Reading data from parquet file...")
-        df = spark.read.parquet("/data/data.parquet")
+        logging.info("Reading data from MongoDB...")
+        df = spark.read.format("mongo").load()
         
         row_count = df.count()
         if row_count == 0:
-            logging.warning("Input DataFrame is empty. Skipping transformation.")
+            logging.warning("Input DataFrame from MongoDB is empty. Skipping transformation.")
             return
         
-        logging.info(f"Processing {row_count} records...")
+        logging.info(f"Processing {row_count} records from MongoDB...")
         
         # =====================================
         # 1. BANKS: G1. Banks
@@ -62,6 +101,8 @@ def transform_data():
         ).select(
             F.col("facts.EntityName_CurrentYearInstant.value").alias("entity_name"),
             F.col("ticker").alias("emiten"),
+            F.col("tahun").alias("tahun"),
+            F.col("triwulan").alias("triwulan"),
             F.col("facts.CurrentPeriodEndDate_CurrentYearInstant.value").alias("report_date"),
             F.col("facts.DescriptionOfPresentationCurrency_CurrentYearInstant.value").alias("satuan"),
             F.col("facts.LevelOfRoundingUsedInFinancialStatements_CurrentYearInstant.value").alias("pembulatan"),
@@ -103,6 +144,8 @@ def transform_data():
         ).select(
             F.col("facts.EntityName_CurrentYearInstant.value").alias("entity_name"),
             F.col("ticker").alias("emiten"),
+            F.col("tahun").alias("tahun"),
+            F.col("triwulan").alias("triwulan"),
             F.col("facts.CurrentPeriodEndDate_CurrentYearInstant.value").alias("report_date"),
             F.col("facts.DescriptionOfPresentationCurrency_CurrentYearInstant.value").alias("satuan"),
             F.col("facts.LevelOfRoundingUsedInFinancialStatements_CurrentYearInstant.value").alias("pembulatan"),
@@ -151,6 +194,8 @@ def transform_data():
             F.col("facts.Subsector_CurrentYearInstant.value") == "G3. Investment Service"
         ).select(
             F.col("ticker").alias("emiten"),
+            F.col("tahun").alias("tahun"),
+            F.col("triwulan").alias("triwulan"),
             F.col("facts.EntityName_CurrentYearInstant.value").alias("entity_name"),
             F.col("facts.CurrentPeriodEndDate_CurrentYearInstant.value").alias("report_date"),
             F.col("facts.DescriptionOfPresentationCurrency_CurrentYearInstant.value").alias("satuan"),
@@ -202,6 +247,8 @@ def transform_data():
         ).select(
             F.col("facts.EntityName_CurrentYearInstant.value").alias("entity_name"),
             F.col("ticker").alias("emiten"),
+            F.col("tahun").alias("tahun"),
+            F.col("triwulan").alias("triwulan"),
             F.col("facts.CurrentPeriodEndDate_CurrentYearInstant.value").alias("report_date"),
             F.col("facts.DescriptionOfPresentationCurrency_CurrentYearInstant.value").alias("satuan"),
             F.col("facts.LevelOfRoundingUsedInFinancialStatements_CurrentYearInstant.value").alias("pembulatan"),
@@ -243,6 +290,8 @@ def transform_data():
         ).select(
             F.col("facts.EntityName_CurrentYearInstant.value").alias("entity_name"),
             F.col("ticker").alias("emiten"),
+            F.col("tahun").alias("tahun"),
+            F.col("triwulan").alias("triwulan"),
             F.col("facts.CurrentPeriodEndDate_CurrentYearInstant.value").alias("report_date"),
             F.col("facts.DescriptionOfPresentationCurrency_CurrentYearInstant.value").alias("satuan"),
             F.col("facts.LevelOfRoundingUsedInFinancialStatements_CurrentYearInstant.value").alias("pembulatan"),
@@ -278,25 +327,29 @@ def transform_data():
             .unionByName(financing_df)
             .unionByName(investment_df) 
             .unionByName(insurance_df)
-            .unionByName(non_special_df)
-        )
+            .unionByName(non_special_df)        )
         final_df = final_df.orderBy("emiten", ascending=True)
-        
         final_df.cache()
         record_count = final_df.count()
-
+        
         if record_count == 0:
             logging.warning("Transformed DataFrame is empty. No data will be saved.")
             return
-
+            
         logging.info(f"Transformation completed successfully with {record_count} records")
+
         
-        # Save transformed data to parquet
-        final_df.write.format("parquet") \
-            .mode("overwrite") \
-            .save("/data/data.parquet")
+        # Get current quarter for JSON filename
+        CURRENT_YEAR_STR, QUARTER = get_current_quarter()
+        json_output_path = f"/data/transformed_data_{CURRENT_YEAR_STR}TW{QUARTER}"
         
-        logging.info("Successfully saved transformed data to /data/data.parquet")
+        # Save transformed data to JSON file using PySpark
+        logging.info(f"Saving transformed data to JSON path: {json_output_path}")
+        
+        # Save as JSON using PySpark (this creates a directory with part files)
+        final_df.coalesce(1).write.mode("overwrite").json(json_output_path)
+        
+        logging.info(f"Successfully saved {record_count} records to JSON path: {json_output_path}")
 
     except Exception as e:
         logging.error(f"An error occurred during data transformation: {str(e)}", exc_info=True)

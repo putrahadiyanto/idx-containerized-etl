@@ -6,13 +6,12 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - etl-data-volume:/data
+      - shared-data:/data
     environment:
       - PYTHONUNBUFFERED=1
-      - PYSPARK_PYTHON=python3
-      - PYSPARK_DRIVER_PYTHON=python3
     restart: "no"  # Run once and exit
 
 volumes:
-  etl-data-volume:
-    name: etl-data-volume
+  shared-data:
+    external: true
+    name: transform_shared-data

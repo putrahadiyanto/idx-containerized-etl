@@ -13,12 +13,12 @@ services:
       - CHROMEDRIVER_EXECUTABLE_PATH=/usr/local/bin/chromedriver
     restart: "no"
     depends_on: []
-
   # Transform Service - Step 2
   transform-service:
     build:
       context: ./transform
       dockerfile: Dockerfile
+    command: python transform.py
     volumes:
       - etl-data-volume:/data
     environment:

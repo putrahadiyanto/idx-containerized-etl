@@ -1,0 +1,23 @@
+# Transform Service Docker Compose
+# Connects to MongoDB instead of using parquet files
+services:
+  idx-transform-service:
+    build: .
+    container_name: idx-transform-service
+    environment:
+      # Spark and Java environment variables
+      SPARK_CLASSPATH: "/opt/spark/jars/mongo-spark-connector_2.12-3.0.1.jar"
+      PYSPARK_SUBMIT_ARGS: "--jars /opt/spark/jars/mongo-spark-connector_2.12-3.0.1.jar pyspark-shell"
+      JAVA_HOME: "/usr/lib/jvm/java-11-openjdk-amd64"
+      SPARK_HOME: "/opt/spark"
+      PYTHONPATH: "/opt/spark/python:/opt/spark/python/lib/py4j-0.10.9.5-src.zip"
+      PYSPARK_PYTHON: "python3"    # Mount shared volume for JSON data
+    volumes:
+      - shared-data:/data
+    restart: "no"
+    # Add extra_hosts to allow connection to MongoDB on host
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  shared-data:
