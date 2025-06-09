@@ -68,7 +68,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy transform script and diagnostic script
 COPY transform.py .
-COPY check_data.py .
 
 # Create data directory for JSON output
 RUN mkdir -p /data
