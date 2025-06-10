@@ -37,6 +37,7 @@ extract_task = DockerOperator(
     image='etl-extract-service',
     command=['python', 'extract.py'],
     network_mode='host',
+    auto_remove=True,  # Automatically remove container after completion
     dag=dag
 )
 
@@ -46,6 +47,7 @@ transform_task = DockerOperator(
     image='etl-transform-service',
     command=['python', 'transform.py'],
     network_mode='host',
+    auto_remove=True,  # Automatically remove container after completion
     mounts=[
         {
             'source': 'etl-shared-data',
@@ -62,15 +64,29 @@ load_task = DockerOperator(
     image='etl-load-service',
     command=['python', 'load.py'],
     network_mode='host',
+    auto_remove=True,  # Automatically remove container after completion
     mounts=[
         {
             'source': 'etl-shared-data',
             'target': '/data',
             'type': 'volume'
         }
+    ],    dag=dag
+)
+
+# Cleanup task - Remove any orphaned containers and unused images
+cleanup_task = DockerOperator(
+    task_id='cleanup_containers',
+    image='docker:latest',
+    command=[
+        'sh', '-c', 
+        'docker container prune -f && docker image prune -f --filter label=stage=builder'
     ],
+    network_mode='host',
+    auto_remove=True,
+    volumes=['/var/run/docker.sock:/var/run/docker.sock'],
     dag=dag
 )
 
 # Define task dependencies
-extract_task >> transform_task >> load_task
+extract_task >> transform_task >> load_task >> cleanup_task
