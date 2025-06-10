@@ -272,27 +272,31 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
-
   # ====================================================================
   # CONTAINERIZED ETL SERVICES
-  # ====================================================================  # Extract Service - Step 1: Scrape financial data and store in MongoDB
+  # ====================================================================
+  
+  # Extract Service - Step 1: Scrape financial data and store in MongoDB
   extract-service:
     build:
-      context: ./extract
+      context: ./idx_etl/extract
       dockerfile: Dockerfile
     command: sleep infinity  # Keep container running for Airflow to trigger
     environment:
       - PYTHONUNBUFFERED=1
       - CHROMEDRIVER_EXECUTABLE_PATH=/usr/local/bin/chromedriver
+      - MONGO_URI=mongodb://host.docker.internal:27017/
+      - MONGO_DATABASE=idx_lapkeu
     restart: always  # Keep container running
     extra_hosts:
       - "host.docker.internal:host-gateway"
     profiles:
       - etl
+      
   # Transform Service - Step 2: Read from MongoDB, transform data, and output JSON
   transform-service:
     build:
-      context: ./transform
+      context: ./idx_etl/transform
       dockerfile: Dockerfile
     command: sleep infinity  # Keep container running for Airflow to trigger
     volumes:
@@ -312,10 +316,11 @@ services:
       - "host.docker.internal:host-gateway"
     profiles:
       - etl
+      
   # Load Service - Step 3: Read JSON files and perform MongoDB upserts
   load-service:
     build:
-      context: ./load
+      context: ./idx_etl/load
       dockerfile: Dockerfile
     command: sleep infinity  # Keep container running for Airflow to trigger
     volumes:
