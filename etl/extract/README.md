@@ -28,12 +28,18 @@ This service extracts financial data from the IDX (Indonesia Stock Exchange) web
 - `SELENIUM_HUB_URL` - Optional Selenium Grid URL
 - `CHROMEDRIVER_EXECUTABLE_PATH` - ChromeDriver path (default: /usr/local/bin/chromedriver)
 
+## Prerequisites
+
+- Docker and Docker Compose installed
+- MongoDB running on the host machine (port 27017)
+- Chrome browser dependencies
+
 ## Usage
 
 ### Build and Run with Docker Compose
 
 ```bash
-# Build and start the services
+# Build and start the service
 docker-compose up --build
 
 # Run in detached mode
@@ -42,7 +48,7 @@ docker-compose up -d --build
 # View logs
 docker-compose logs -f idx-extract
 
-# Stop services
+# Stop service
 docker-compose down
 ```
 
@@ -52,7 +58,7 @@ docker-compose down
 # Build the image
 docker build -t idx-extract .
 
-# Run the container
+# Run the container (connects to host MongoDB)
 docker run --rm \
   -e MONGO_URI=mongodb://host.docker.internal:27017/ \
   -e MONGO_DATABASE=idx_lapkeu \

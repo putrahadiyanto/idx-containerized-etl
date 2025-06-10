@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   idx-extract:
     build: .
@@ -11,24 +9,4 @@ services:
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
-    depends_on:
-      - mongodb
-    networks:
-      - idx-network
-
-  mongodb:
-    image: mongo:5.0
-    container_name: idx-mongodb
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb_data:/data/db
-    networks:
-      - idx-network
-
-volumes:
-  mongodb_data:
-
-networks:
-  idx-network:
-    driver: bridge
+    network_mode: "bridge"
