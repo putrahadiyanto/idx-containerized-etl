@@ -1,0 +1,3 @@
+yfinance>=0.2.61
+pymongo>=4.7.3
+pandas>=2.2.2

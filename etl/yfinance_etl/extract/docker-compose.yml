@@ -1,0 +1,11 @@
+services:
+  yfinance_extractor:
+    build: .
+    container_name: yfinance_extractor
+    restart: "no"    
+    environment:
+      MONGO_HOST: host.docker.internal
+      MONGO_PORT: 27017
+    volumes:
+      - ./emiten.csv:/app/emiten.csv:ro
+    command: ["python", "yfinance_extractor.py"]
