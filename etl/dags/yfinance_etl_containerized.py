@@ -1,7 +1,7 @@
 """
-IDX Laporan Keuangan ETL DAG - Containerized Version
+YFinance ETL DAG - Containerized Version
 
-This DAG implements the main ETL process for IDX financial data.
+This DAG implements the main ETL process for YFinance stock data.
 It uses existing containerized services: Extract, Transform, and Load.
 """
 
@@ -22,35 +22,35 @@ default_args = {
 
 # Define the DAG
 dag = DAG(
-    'idx_lapkeu_etl_containerized',
+    'yfinance_etl_containerized',
     default_args=default_args,
-    description='IDX Laporan Keuangan ETL process using containers',
-    schedule_interval='0 0 1 2,5,8,11 *',  # Run on 1st of Feb, May, Aug, Nov
+    description='YFinance stock data ETL process using containers',
+    schedule_interval='0 2 * * 1-5',  # Run at 2 AM Monday to Friday (weekdays)
     start_date=datetime(2025, 6, 1),
     catchup=False,
-    tags=['idx', 'financial', 'etl', 'containerized']
+    tags=['yfinance', 'stock', 'etl', 'containerized']
 )
 
-# Extract task - Scrapping data from IDX
+# Extract task - Extracting stock data from YFinance
 extract_task = DockerOperator(
-    task_id='scrapping_data_idx',
-    image='etl-extract-service',
-    command=['python', 'extract.py'],
+    task_id='extract_yfinance_data',
+    image='yfinance-extract-service',
+    command=['python', 'yfinance_extractor.py'],
     network_mode='host',
     auto_remove=True,  # Automatically remove container after completion
     dag=dag
 )
 
-# Transform task - Processing data using PySpark
+# Transform task - Processing stock data using PySpark
 transform_task = DockerOperator(
-    task_id='transform_data_using_pyspark',
-    image='etl-transform-service',
-    command=['python', 'transform.py'],
+    task_id='transform_stock_data_pyspark',
+    image='yfinance-transform-service',
+    command=['python', 'mongo_to_spark.py'],
     network_mode='host',
     auto_remove=True,  # Automatically remove container after completion
     mounts=[
         {
-            'source': 'etl-shared-data',
+            'source': 'transform_shared-data',
             'target': '/data',
             'type': 'volume'
         }
@@ -58,20 +58,21 @@ transform_task = DockerOperator(
     dag=dag
 )
 
-# Load task - Loading data into MongoDB
+# Load task - Loading transformed data into MongoDB
 load_task = DockerOperator(
-    task_id='load_data_into_mongodb',
-    image='etl-load-service',
-    command=['python', 'load.py'],
+    task_id='load_stock_data_mongodb',
+    image='yfinance-load-service',
+    command=['python', 'load_json_to_mongo.py'],
     network_mode='host',
     auto_remove=True,  # Automatically remove container after completion
     mounts=[
         {
-            'source': 'etl-shared-data',
+            'source': 'transform_shared-data',
             'target': '/data',
             'type': 'volume'
         }
-    ],    dag=dag
+    ],
+    dag=dag
 )
 
 # Cleanup task - Remove any orphaned containers and unused images

@@ -1,0 +1,19 @@
+services:
+  yfinance-load:
+    build: .
+    container_name: yfinance-load
+    environment:
+      - MONGO_HOST=host.docker.internal  # For connecting to MongoDB on host machine
+      - MONGO_PORT=27017
+      - DB_NAME=yfinance_processed_data
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - shared-data:/data  # Mount the shared volume containing JSON data from transform step
+    restart: "no"  # Don't restart automatically as this is a one-time job
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Allow connection to host MongoDB
+
+volumes:
+  shared-data:
+    external: true
+    name: transform_shared-data
