@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  yfinance-transform:
+    build: .
+    container_name: yfinance-transform
+    environment:
+      - MONGO_HOST=host.docker.internal  # For connecting to MongoDB on host machine
+      - MONGO_PORT=27017
+      - SPARK_MASTER=local[*]
+    volumes:
+      - ./output:/data  # Mount output directory to host
+    networks:
+      - yfinance-network
+    restart: "no"  # Don't restart automatically as this is a one-time job
+
+networks:
+  yfinance-network:
+    driver: bridge

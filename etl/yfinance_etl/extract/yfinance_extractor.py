@@ -78,17 +78,13 @@ def extract_and_save_data():
     if not ticker_list:
         logging.warning("No tickers found. Make sure emiten.csv is available and properly formatted.")
         return 0
-    
     logging.info(f"Processing {len(ticker_list)} tickers: {ticker_list}")
-      # Create MongoDB client and get database/collection
+    # Create MongoDB client and get database/collection
     client = get_mongo_client()
     
-    # Use year for database name and current date for collection name
-    current_year = datetime.now().year
-    current_date = datetime.now().strftime("%Y%m%d")
-    
-    db_name = f"yfinance_data_{current_year}"
-    collection_name = f"stock_data_{current_date}"
+    # Use single database and collection
+    db_name = "yfinance_raw_data"
+    collection_name = "stock_data"
     
     db = client[db_name]
     collection = db[collection_name]
