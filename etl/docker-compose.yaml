@@ -272,5 +272,171 @@ services:
       airflow-init:
         condition: service_completed_successfully
 
+  # ====================================================================
+  # DATA STORAGE SERVICES
+  # ====================================================================
+  
+  mongodb:
+    image: mongo:6.0
+    container_name: mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: idx_etl
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+      - mongodb-config:/data/configdb
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    restart: always
+    profiles:
+      - etl
+      - airflow
+    networks:
+      - etl-network
+
+  # ====================================================================
+  # ETL IMAGE BUILDS (Images only - containers created by Airflow)
+  # ====================================================================
+    # IDX ETL Services
+  idx-etl-extract:
+    build:
+      context: ./idx_etl/extract
+      dockerfile: Dockerfile
+    image: idx-etl-extract:latest
+    environment:
+      - MONGO_HOST=mongodb
+      - MONGO_PORT=27017
+      - MONGO_USERNAME=root
+      - MONGO_PASSWORD=password
+      - MONGO_AUTH_DB=admin
+      - MONGO_DATABASE=idx_etl
+    networks:
+      - etl-network
+    profiles:
+      - build
+      - etl
+    # No command - image only
+    deploy:
+      replicas: 0
+    
+  idx-etl-transform:
+    build:
+      context: ./idx_etl/transform
+      dockerfile: Dockerfile
+    image: idx-etl-transform:latest
+    environment:
+      - MONGO_HOST=mongodb
+      - MONGO_PORT=27017
+      - MONGO_USERNAME=root
+      - MONGO_PASSWORD=password
+      - MONGO_AUTH_DB=admin
+      - MONGO_DATABASE=idx_etl
+    networks:
+      - etl-network
+    profiles:
+      - build
+      - etl
+    # No command - image only
+    deploy:
+      replicas: 0
+      
+  idx-etl-load:
+    build:
+      context: ./idx_etl/load
+      dockerfile: Dockerfile
+    image: idx-etl-load:latest
+    environment:
+      - MONGO_HOST=mongodb
+      - MONGO_PORT=27017
+      - MONGO_USERNAME=root
+      - MONGO_PASSWORD=password
+      - MONGO_AUTH_DB=admin
+      - MONGO_DATABASE=idx_etl
+    networks:
+      - etl-network
+    profiles:
+      - build
+      - etl
+    # No command - image only
+    deploy:
+      replicas: 0
+      
+  # YFinance ETL Services
+  yfinance-etl-extract:
+    build:
+      context: ./yfinance_etl/extract
+      dockerfile: Dockerfile
+    image: yfinance-etl-extract:latest
+    environment:
+      - MONGO_HOST=mongodb
+      - MONGO_PORT=27017
+      - MONGO_USERNAME=root
+      - MONGO_PASSWORD=password
+      - MONGO_AUTH_DB=admin
+      - DB_NAME=idx_etl
+    networks:
+      - etl-network
+    profiles:
+      - build
+      - etl
+    # No command - image only
+    deploy:
+      replicas: 0
+      
+  yfinance-etl-transform:
+    build:
+      context: ./yfinance_etl/transform
+      dockerfile: Dockerfile
+    image: yfinance-etl-transform:latest
+    environment:
+      - MONGO_HOST=mongodb
+      - MONGO_PORT=27017
+      - MONGO_USERNAME=root
+      - MONGO_PASSWORD=password
+      - MONGO_AUTH_DB=admin
+      - DB_NAME=idx_etl
+    networks:
+      - etl-network
+    profiles:
+      - build
+      - etl
+    # No command - image only
+    deploy:
+      replicas: 0
+      
+  yfinance-etl-load:
+    build:
+      context: ./yfinance_etl/load
+      dockerfile: Dockerfile
+    image: yfinance-etl-load:latest
+    environment:
+      - MONGO_HOST=mongodb
+      - MONGO_PORT=27017
+      - MONGO_USERNAME=root
+      - MONGO_PASSWORD=password
+      - MONGO_AUTH_DB=admin
+      - DB_NAME=idx_etl
+    networks:
+      - etl-network
+    profiles:
+      - build
+      - etl
+    # No command - image only
+    deploy:
+      replicas: 0
+
 volumes:
   postgres-db-volume:
+  mongodb-data:
+  mongodb-config:
+
+networks:
+  etl-network:
+    driver: bridge

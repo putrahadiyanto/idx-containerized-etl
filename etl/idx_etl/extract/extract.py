@@ -32,10 +32,17 @@ def extract_financial_data():
     
     # Get current year and quarter
     CURRENT_YEAR_STR, QUARTER = get_current_quarter()
+      # MongoDB configuration - use environment variables with defaults
+    mongo_host = os.getenv("MONGO_HOST", "mongodb")
+    mongo_port = os.getenv("MONGO_PORT", "27017")
+    mongo_username = os.getenv("MONGO_USERNAME", "root")
+    mongo_password = os.getenv("MONGO_PASSWORD", "password")
+    mongo_auth_db = os.getenv("MONGO_AUTH_DB", "admin")
+    mongo_database_name = os.getenv("MONGO_DATABASE", "idx_etl")
     
-    # MongoDB configuration - use environment variables with defaults
-    mongo_db_uri = os.getenv("MONGO_URI", "mongodb://host.docker.internal:27017/")
-    mongo_database_name = os.getenv("MONGO_DATABASE", "idx_lapkeu")
+    # Construct MongoDB URI with authentication
+    mongo_db_uri = f"mongodb://{mongo_username}:{mongo_password}@{mongo_host}:{mongo_port}/{mongo_auth_db}"
+    
     mongo_target_collection_name = os.getenv(
         "MONGO_COLLECTION", 
         f"idx_lapkeu{CURRENT_YEAR_STR}TW{QUARTER}"

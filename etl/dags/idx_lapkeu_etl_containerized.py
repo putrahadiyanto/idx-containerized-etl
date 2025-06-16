@@ -34,20 +34,36 @@ dag = DAG(
 # Extract task - Scrapping data from IDX
 extract_task = DockerOperator(
     task_id='scrapping_data_idx',
-    image='etl-extract-service',
+    image='idx-etl-extract:latest',
     command=['python', 'extract.py'],
-    network_mode='host',
+    network_mode='bridge',
     auto_remove=True,  # Automatically remove container after completion
+    environment={
+        'MONGO_HOST': 'host.docker.internal',
+        'MONGO_PORT': '27017',
+        'MONGO_USERNAME': 'root',
+        'MONGO_PASSWORD': 'password',
+        'MONGO_AUTH_DB': 'admin',
+        'MONGO_DATABASE': 'idx_data'
+    },
     dag=dag
 )
 
 # Transform task - Processing data using PySpark
 transform_task = DockerOperator(
     task_id='transform_data_using_pyspark',
-    image='etl-transform-service',
+    image='idx-etl-transform:latest',
     command=['python', 'transform.py'],
-    network_mode='host',
+    network_mode='etl_etl-network',
     auto_remove=True,  # Automatically remove container after completion
+    environment={
+        'MONGO_HOST': 'host.docker.internal',
+        'MONGO_PORT': '27017',
+        'MONGO_USERNAME': 'root',
+        'MONGO_PASSWORD': 'password',
+        'MONGO_AUTH_DB': 'admin',
+        'MONGO_DATABASE': 'idx_data'
+    },
     mounts=[
         {
             'source': 'etl-shared-data',
@@ -60,18 +76,26 @@ transform_task = DockerOperator(
 
 # Load task - Loading data into MongoDB
 load_task = DockerOperator(
-    task_id='load_data_into_mongodb',
-    image='etl-load-service',
+    task_id='load_data_into_mongodb',    image='idx-etl-load:latest',
     command=['python', 'load.py'],
-    network_mode='host',
+    network_mode='etl_etl-network',
     auto_remove=True,  # Automatically remove container after completion
+    environment={
+        'MONGO_HOST': 'mongodb',
+        'MONGO_PORT': '27017',
+        'MONGO_USERNAME': 'root',
+        'MONGO_PASSWORD': 'password',
+        'MONGO_AUTH_DB': 'admin',
+        'MONGO_DATABASE': 'idx_data_final'
+    },
     mounts=[
         {
             'source': 'etl-shared-data',
             'target': '/data',
             'type': 'volume'
         }
-    ],    dag=dag
+    ],
+    dag=dag
 )
 
 # Cleanup task - Remove any orphaned containers and unused images

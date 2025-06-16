@@ -149,13 +149,23 @@ def load():
         if not records:
             logging.warning("No records found in JSON files. Skipping load.")
             return
-        
-        # Create MongoDB connection
+          # Create MongoDB connection
         logging.info("Connecting to MongoDB...")
-        client = MongoClient("mongodb://host.docker.internal:27017/")
         
-        # Database and collection setup
-        db_name = "idx_lapkeu_final"
+        # Get MongoDB configuration from environment variables with defaults
+        mongo_host = os.getenv("MONGO_HOST", "mongodb")
+        mongo_port = int(os.getenv("MONGO_PORT", "27017"))
+        mongo_username = os.getenv("MONGO_USERNAME", "root")
+        mongo_password = os.getenv("MONGO_PASSWORD", "password")
+        mongo_auth_db = os.getenv("MONGO_AUTH_DB", "admin")
+        
+        # Construct MongoDB URI with authentication
+        mongo_uri = f"mongodb://{mongo_username}:{mongo_password}@{mongo_host}:{mongo_port}/{mongo_auth_db}"
+        
+        logging.info(f"Connecting to MongoDB at {mongo_host}:{mongo_port}")
+        client = MongoClient(mongo_uri)
+          # Database and collection setup
+        db_name = os.getenv("MONGO_DATABASE", "idx_etl")
         collection_name = f"idx_lapkeu_{CURRENT_YEAR_STR}TW{QUARTER}_final"
         
         db = client[db_name]

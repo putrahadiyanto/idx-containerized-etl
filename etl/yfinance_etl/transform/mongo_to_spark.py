@@ -14,14 +14,21 @@ logging.basicConfig(
     ]
 )
 
-# MongoDB config variables - use host.docker.internal for Docker containers
-MONGO_HOST = os.getenv("MONGO_HOST", "host.docker.internal")
+# MongoDB config variables
+MONGO_HOST = os.getenv("MONGO_HOST", "mongodb")
 MONGO_PORT = os.getenv("MONGO_PORT", "27017")
+MONGO_USERNAME = os.getenv("MONGO_USERNAME", "root")
+MONGO_PASSWORD = os.getenv("MONGO_PASSWORD", "password")
+MONGO_AUTH_DB = os.getenv("MONGO_AUTH_DB", "admin")
+DB_NAME = os.getenv("DB_NAME", "idx_etl")
+
+# Construct MongoDB URI with authentication
+mongo_uri = f"mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@{MONGO_HOST}:{MONGO_PORT}/{DB_NAME}.stock_data?authSource={MONGO_AUTH_DB}"
 
 # Inisialisasi Spark session
 spark = SparkSession.builder \
     .appName("YFinance Data Transformation") \
-    .config("spark.mongodb.input.uri", f"mongodb://{MONGO_HOST}:{MONGO_PORT}/yfinance_raw_data.stock_data") \
+    .config("spark.mongodb.input.uri", mongo_uri) \
     .config("spark.jars", "/opt/spark/jars/mongo-spark-connector_2.12-3.0.1.jar,/opt/spark/jars/mongodb-driver-3.12.10.jar,/opt/spark/jars/bson-3.12.10.jar,/opt/spark/jars/mongodb-driver-core-3.12.10.jar") \
     .getOrCreate()
 

@@ -16,9 +16,13 @@ import logging
 
 def _upload_to_mongodb(data, mongo_uri, db_name, collection_name):
     try:
+        # Parse authentication from URI if present
         client = MongoClient(mongo_uri)
         db = client[db_name]
         collection = db[collection_name]
+        
+        # Test connection first
+        client.admin.command('ping')
         
         # Check for existing data based on ticker, year, and quarter for idempotency
         existing = collection.find_one({
@@ -42,6 +46,9 @@ def _upload_to_mongodb(data, mongo_uri, db_name, collection_name):
     except Exception as e:
         logging.error(f"Error uploading to MongoDB for ticker {data.get('ticker', 'N/A')}: {str(e)}")
         raise
+    finally:
+        if 'client' in locals():
+            client.close()
 
 def _generate_url(ticker, report_year, report_quarter):
     return f"https://www.idx.co.id/Portals/0/StaticData/ListedCompanies/Corporate_Actions/New_Info_JSX/Jenis_Informasi/01_Laporan_Keuangan/02_Soft_Copy_Laporan_Keuangan/Laporan%20Keuangan%20Tahun%20{report_year}/TW{report_quarter}/{ticker}/instance.zip"

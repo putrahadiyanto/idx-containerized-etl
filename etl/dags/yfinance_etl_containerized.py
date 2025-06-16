@@ -34,20 +34,36 @@ dag = DAG(
 # Extract task - Extracting stock data from YFinance
 extract_task = DockerOperator(
     task_id='extract_yfinance_data',
-    image='yfinance-extract-service',
+    image='yfinance-etl-extract:latest',
     command=['python', 'yfinance_extractor.py'],
-    network_mode='host',
+    network_mode='bridge',
     auto_remove=True,  # Automatically remove container after completion
+    environment={
+        'MONGO_HOST': 'host.docker.internal',
+        'MONGO_PORT': '27017',
+        'MONGO_USERNAME': 'root',
+        'MONGO_PASSWORD': 'password',
+        'MONGO_AUTH_DB': 'admin',
+        'DB_NAME': 'yfinance_data'
+    },
     dag=dag
 )
 
 # Transform task - Processing stock data using PySpark
 transform_task = DockerOperator(
     task_id='transform_stock_data_pyspark',
-    image='yfinance-transform-service',
+    image='yfinance-etl-transform:latest',
     command=['python', 'mongo_to_spark.py'],
-    network_mode='host',
+    network_mode='bridge',
     auto_remove=True,  # Automatically remove container after completion
+    environment={
+        'MONGO_HOST': 'host.docker.internal',
+        'MONGO_PORT': '27017',
+        'MONGO_USERNAME': 'root',
+        'MONGO_PASSWORD': 'password',
+        'MONGO_AUTH_DB': 'admin',
+        'DB_NAME': 'yfinance_data'
+    },
     mounts=[
         {
             'source': 'transform_shared-data',
@@ -60,11 +76,18 @@ transform_task = DockerOperator(
 
 # Load task - Loading transformed data into MongoDB
 load_task = DockerOperator(
-    task_id='load_stock_data_mongodb',
-    image='yfinance-load-service',
+    task_id='load_stock_data_mongodb',    image='yfinance-etl-load:latest',
     command=['python', 'load_json_to_mongo.py'],
-    network_mode='host',
+    network_mode='bridge',
     auto_remove=True,  # Automatically remove container after completion
+    environment={
+        'MONGO_HOST': 'host.docker.internal',
+        'MONGO_PORT': '27017',
+        'MONGO_USERNAME': 'root',
+        'MONGO_PASSWORD': 'password',
+        'MONGO_AUTH_DB': 'admin',
+        'DB_NAME': 'yfinance_data_final'
+    },
     mounts=[
         {
             'source': 'transform_shared-data',

@@ -24,16 +24,22 @@ logging.basicConfig(
 )
 
 # MongoDB config variables
-MONGO_HOST = os.getenv("MONGO_HOST", "host.docker.internal")
+MONGO_HOST = os.getenv("MONGO_HOST", "mongodb")
 MONGO_PORT = int(os.getenv("MONGO_PORT", "27017"))
-DB_NAME = os.getenv("DB_NAME", "yfinance_processed_data")
+MONGO_USERNAME = os.getenv("MONGO_USERNAME", "root")
+MONGO_PASSWORD = os.getenv("MONGO_PASSWORD", "password")
+MONGO_AUTH_DB = os.getenv("MONGO_AUTH_DB", "admin")
+DB_NAME = os.getenv("DB_NAME", "idx_etl")
 
 def get_mongo_client():
     """
-    Create and return a MongoDB client
+    Create and return a MongoDB client with authentication
     """
     try:
-        client = MongoClient(f"mongodb://{MONGO_HOST}:{MONGO_PORT}/")
+        # Construct MongoDB URI with authentication
+        mongo_uri = f"mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_AUTH_DB}"
+        
+        client = MongoClient(mongo_uri)
         # Test connection
         client.admin.command('ping')
         logging.info(f"Successfully connected to MongoDB at {MONGO_HOST}:{MONGO_PORT}")
